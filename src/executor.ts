@@ -97,7 +97,7 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
     };
   }
 
-  const cacheKey = buildKey(opts.tool, opts.args);
+  const cacheKey = buildKey(opts.tool, opts.args, opts.env);
 
   // Cache check
   if (!opts.noCache) {
