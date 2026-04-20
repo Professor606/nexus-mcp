@@ -21,12 +21,12 @@ const { values } = parseArgs({
 
 const profile = (values.profile ?? "recon") as Profile;
 
-if (values.debug) {
+if (values.debug || process.env.DEBUG === "true") {
   process.env.DEBUG = "true";
   console.error(`[nexus-mcp] Debug mode ON`);
 }
 
-if (values["enable-exploit"]) {
+if (values["enable-exploit"] || process.env.NEXUS_ENABLE_EXPLOIT === "true") {
   process.env.NEXUS_ENABLE_EXPLOIT = "true";
   console.error(`[nexus-mcp] Exploit tools ENABLED (pwntools_run, angr_analyze, libc_database_lookup)`);
 }
