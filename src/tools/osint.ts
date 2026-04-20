@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("sherlock")) {
@@ -12,16 +12,15 @@ export async function register(server: McpServer): Promise<void> {
       "Hunt down social media accounts by username.",
       {
         target: TargetSchema.describe("Username"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "sherlock_search");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "sherlock",
           target,
-          args: ["--json", "--print-found", ...extraFlags, target],
+          args: ["--json", "--print-found", ...flags, target],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -36,19 +35,18 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema.describe("Git URL or filesystem path"),
         target_type: z.enum(["git", "filesystem", "github"]).default("git"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, target_type, flags, timeout }) => {
         appendToolRun(target, "trufflehog_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "trufflehog",
           target,
-          args: [target_type, target, "--json", ...extraFlags],
+          args: [target_type, target, "--json", ...flags],
           timeout,
         });
-        
+
         try {
             const lines = result.raw_truncated.split('\n').filter(Boolean);
             result.findings = lines.map(l => {
@@ -75,7 +73,7 @@ export async function register(server: McpServer): Promise<void> {
       "OSINT automation tool.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-s"),
+        flags: SafeFlagsSchema.default(["-s"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
@@ -83,11 +81,10 @@ export async function register(server: McpServer): Promise<void> {
         if (!process.env.SPIDERFOOT_API_KEY) {
            return { content: [{ type: "text", text: JSON.stringify({ error: "SPIDERFOOT_API_KEY env var not set" }) }] };
         }
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "spiderfoot",
           target,
-          args: ["-t", target, "-q", ...extraFlags],
+          args: ["-t", target, "-q", ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -101,7 +98,7 @@ export async function register(server: McpServer): Promise<void> {
       "Search Shodan via CLI.",
       {
         target: TargetSchema.describe("Search query (e.g. org:target or ip)"),
-        flags: FlagsSchema.default("--fields ip_str,port,org,hostnames"),
+        flags: SafeFlagsSchema.default(["--fields", "ip_str,port,org,hostnames"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
@@ -109,18 +106,15 @@ export async function register(server: McpServer): Promise<void> {
         if (!process.env.SHODAN_API_KEY) {
             return { content: [{ type: "text", text: JSON.stringify({ error: "SHODAN_API_KEY env var not set" }) }] };
         }
-        // Ensure initialized
         await exec({tool: "shodan", target, args: ["init", process.env.SHODAN_API_KEY]});
 
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "shodan",
           target,
-          args: ["search", ...extraFlags, target],
+          args: ["search", ...flags, target],
           timeout,
         });
-        
-        // Parse simple output
+
         const lines = result.raw_truncated.split('\n').filter(Boolean);
         result.findings = lines.map(l => ({
             type: "shodan_host",

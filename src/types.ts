@@ -82,11 +82,48 @@ export const TargetSchema = z
   .min(1)
   .describe("IP address, domain, URL, or file path");
 
-export const FlagsSchema = z
-  .string()
+/** Rejects shell metacharacters to prevent command injection */
+const SHELL_METACHAR_REGEX = /[;&|`$(){}[\]\\]/;
+
+/**
+ * Safe structured flags schema.
+ * Accepts only an array of strings that do NOT contain shell metacharacters.
+ */
+export const SafeFlagsSchema = z
+  .array(
+    z
+      .string()
+      .min(1)
+      .regex(
+        /^[^;&|`$(){}[\]\\]+$/,
+        "Flag contains shell metacharacters and is not allowed"
+      )
+  )
   .optional()
-  .default("")
-  .describe("Additional raw flags to pass to the tool");
+  .default([])
+  .describe("Additional flags to pass to the tool as a safe array");
+
+/** Preset strategy names mapped to approved flag arrays */
+export const FLAG_MAP: Record<string, string[]> = {
+  fast: ["-T4", "-F"],
+  comprehensive: ["-sS", "-sV", "-sC", "-O", "--top-ports", "1000"],
+  stealth: ["-T2", "-sS"],
+  aggressive: ["-A", "-T4"],
+  default: [],
+};
+
+/**
+ * Runtime validator for flag arrays.
+ * Throws if any flag contains shell metacharacters.
+ */
+export function sanitizeFlags(flags: string[]): string[] {
+  return flags.filter((f) => {
+    if (SHELL_METACHAR_REGEX.test(f)) {
+      throw new Error(`Invalid flag contains shell metacharacters: ${f}`);
+    }
+    return f.length > 0;
+  });
+}
 
 export const TimeoutSchema = z
   .number()

@@ -4,7 +4,7 @@ import { exec } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("nmap")) {
@@ -14,17 +14,16 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         ports: z.string().default("top1000").describe("Port range: top1000, 1-65535, 80,443"),
-        flags: FlagsSchema.default("-sV -sC"),
+        flags: SafeFlagsSchema.default(["-sV", "-sC"]),
         timeout: TimeoutSchema,
       },
       async ({ target, ports, flags, timeout }) => {
         appendToolRun(target, "nmap_scan");
         const portArg = ports === "top1000" ? ["--top-ports", "1000"] : ["-p", ports];
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "nmap",
           target,
-          args: [target, ...portArg, ...extraFlags, "-oN", "-"],
+          args: [target, ...portArg, ...flags, "-oN", "-"],
           timeout,
           parse: getParser("nmap"),
         });
@@ -39,16 +38,15 @@ export async function register(server: McpServer): Promise<void> {
       "Fast port scanner, pipes to nmap for service detection.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "rustscan_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "rustscan",
           target,
-          args: ["-a", target, "--ulimit", "5000", ...extraFlags, "--", "-sV", "-sC", "-oN", "-"],
+          args: ["-a", target, "--ulimit", "5000", ...flags, "--", "-sV", "-sC", "-oN", "-"],
           timeout,
           parse: getParser("nmap"),
         });
@@ -63,16 +61,15 @@ export async function register(server: McpServer): Promise<void> {
       "Fast passive subdomain enumeration.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "subfinder_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "subfinder",
           target,
-          args: ["-d", target, "-oJ", "-", "-silent", ...extraFlags],
+          args: ["-d", target, "-oJ", "-", "-silent", ...flags],
           timeout,
           parse: getParser("subfinder"),
         });

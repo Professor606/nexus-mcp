@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 import fs from "node:fs/promises";
 
 export async function register(server: McpServer): Promise<void> {
@@ -60,7 +60,7 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         script: z.string().optional().describe("Post-analysis script name"),
-        timeout: TimeoutSchema.default(600), // Ghidra takes a while
+        timeout: TimeoutSchema.default(600),
       },
       async ({ target, script, timeout }) => {
         appendToolRun(target, "ghidra_analyze");
@@ -68,7 +68,7 @@ export async function register(server: McpServer): Promise<void> {
         await fs.mkdir(projDir, { recursive: true });
         const args = [projDir, "Proj", "-import", target];
         if (script) args.push("-postScript", script);
-        
+
         const result = await exec({
           tool: "analyzeHeadless",
           target,
@@ -86,17 +86,16 @@ export async function register(server: McpServer): Promise<void> {
       "Firmware analysis and extraction tool.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-e"),
+        flags: SafeFlagsSchema.default(["-e"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "binwalk_extract");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outDir = `/tmp/nexus-mcp/binwalk_${Date.now()}`;
         const result = await exec({
           tool: "binwalk",
           target,
-          args: [...extraFlags, target, "-C", outDir],
+          args: [...flags, target, "-C", outDir],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -121,7 +120,6 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
         });
         try {
-             // Handle some checksec versions outputting to stderr or having trailing newlines
              const cleanJson = result.raw_truncated.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
              const obj = JSON.parse(cleanJson);
              result.findings = Object.keys(obj).flatMap(k => 
@@ -166,7 +164,7 @@ export async function register(server: McpServer): Promise<void> {
          const { raw_truncated } = await exec({tool: "readelf", target, args: ["-s", target], timeout});
          out += `\n--- SYMBOLS ---\n${raw_truncated}\n`;
       }
-      return { content: [{ type: "text", text: out.slice(0, 6000) }] }; // Simple truncate
+      return { content: [{ type: "text", text: out.slice(0, 6000) }] };
     }
   );
 

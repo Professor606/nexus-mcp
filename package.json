@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "High-performance stdio MCP server for penetration testing",
   "type": "module",
-  "bin": { "nexus-mcp": "./dist/index.js" },
+  "bin": {
+    "nexus-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",

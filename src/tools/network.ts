@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("enum4linux-ng")) {
@@ -12,17 +12,16 @@ export async function register(server: McpServer): Promise<void> {
       "Next generation version of enum4linux.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-A"),
+        flags: SafeFlagsSchema.default(["-A"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "enum4linux_ng_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/enum4linux_${Date.now()}`;
         const result = await exec({
           tool: "enum4linux-ng",
           target,
-          args: [...extraFlags, "-oJ", outPath, target],
+          args: [...flags, "-oJ", outPath, target],
           timeout,
         });
 
@@ -30,7 +29,6 @@ export async function register(server: McpServer): Promise<void> {
         if (jsonRaw) {
              try {
                  const obj = JSON.parse(jsonRaw);
-                 // Very basic parse to extract shares as findings
                  if (obj.shares && obj.shares.shares) {
                      result.findings = Object.keys(obj.shares.shares).map(s => ({
                          type: "smb_share",
@@ -56,16 +54,15 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         protocol: z.enum(["smb","winrm","ssh","mssql","ldap"]).describe("Protocol to attack"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, protocol, flags, timeout }) => {
         appendToolRun(target, "netexec_run");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: bin,
           target,
-          args: [protocol, target, ...extraFlags],
+          args: [protocol, target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -79,16 +76,15 @@ export async function register(server: McpServer): Promise<void> {
       "Handy SMB enumeration tool.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "smbmap_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "smbmap",
           target,
-          args: ["-H", target, ...extraFlags],
+          args: ["-H", target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -102,16 +98,15 @@ export async function register(server: McpServer): Promise<void> {
       "LLMNR, NBT-NS and MDNS poisoner.",
       {
         target: TargetSchema.describe("Interface to listen on (e.g. eth0)"),
-        flags: FlagsSchema.default("-A"), // Analyze mode by default for safety
-        timeout: TimeoutSchema.default(600), // Longer default timeout for listening
+        flags: SafeFlagsSchema.default(["-A"]),
+        timeout: TimeoutSchema.default(600),
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "responder_run");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "responder",
           target,
-          args: ["-I", target, ...extraFlags],
+          args: ["-I", target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

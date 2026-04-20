@@ -4,7 +4,7 @@ import { exec } from "../executor.js";
 import { saveNote, loadNote, appendFindings, clearNote, allTargets, setPhase } from "../memory.js";
 import { setActiveProfile, getActiveProfile } from "../registry.js";
 import type { Finding, Profile } from "../types.js";
-import { CVSS_MAP } from "../types.js";
+import { CVSS_MAP, sanitizeFlags } from "../types.js";
 
 function getSeverityNumber(sev: string): number {
     return CVSS_MAP[sev as keyof typeof CVSS_MAP] || 0.0;
@@ -51,11 +51,10 @@ export async function register(server: McpServer): Promise<void> {
           return { content: [{ type: "text", text: JSON.stringify(note, null, 2) }] };
       }
       if (action === "append") {
-          // Handle appending arbitrary data manually if needed, or update phase
           if (data && data.phase) setPhase(target, data.phase as string);
           return { content: [{ type: "text", text: `Appended data for ${target}` }] };
       }
-      
+
       return { content: [{ type: "text", text: "Unknown action" }] };
     }
   );
@@ -73,17 +72,14 @@ export async function register(server: McpServer): Promise<void> {
     async ({ target, chain }) => {
       const results = [];
       const allFindings: Finding[] = [];
-      
-      // We can't trivially dynamically dispatch to server.tools since we don't have direct access to their handlers here without a complex registry.
-      // But we can just use exec directly if we know the tool binary.
-      // Wait, chain_tools is meant to run MCP tools or binaries? Blueprint says: "Run multiple tools sequentially, feed output forward...".
-      // Let's implement it by resolving the tool name to binary execution. Actually, it's safer to just execute the CLI binary for now.
+
       for (const step of chain) {
+          const stepFlags = Array.isArray(step.args?.flags) ? step.args.flags : [];
+          sanitizeFlags(stepFlags);
           const binaryOpts = {
               tool: step.tool.replace(/_(scan|probe|crawl|enum|detect|test|discover|crack|analyze|carve|extract|read|find)$/, ""), 
-              // Simplistic mapping: nmap_scan -> nmap
               target,
-              args: step.args && step.args.flags ? (step.args.flags as string).split(' ') : [target]
+              args: stepFlags.length > 0 ? stepFlags : [target]
           };
           const res = await exec(binaryOpts);
           results.push(res);
@@ -158,7 +154,6 @@ export async function register(server: McpServer): Promise<void> {
           return { content: [{ type: "text", text: JSON.stringify(note, null, 2) }] };
       }
 
-      // Generate Markdown
       const sortedFindings = [...note.findings].sort((a, b) => getSeverityNumber(b.severity || "info") - getSeverityNumber(a.severity || "info"));
 
       let md = `# Penetration Test Report: ${target}\n\n`;

@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("vol") || await isInstalled("volatility3") || await isInstalled("vol.py")) {
@@ -14,16 +14,15 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema.describe("Memory image file"),
         plugin: z.string().optional().describe("Plugin name to run. Leave empty for info/list."),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, plugin, flags, timeout }) => {
         appendToolRun(target, "volatility3_analyze");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const args = ["-f", target];
         if (plugin) args.push(plugin);
-        else args.push("windows.info"); // Default to windows info if no plugin
-        args.push(...extraFlags);
+        else args.push("windows.info");
+        args.push(...flags);
 
         const result = await exec({
           tool: bin,
@@ -42,17 +41,16 @@ export async function register(server: McpServer): Promise<void> {
       "File carving from disk image.",
       {
         target: TargetSchema.describe("Disk image file"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "foremost_carve");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outDir = `/tmp/nexus-mcp/foremost_${Date.now()}`;
         const result = await exec({
           tool: "foremost",
           target,
-          args: ["-T", "-i", target, "-o", outDir, ...extraFlags],
+          args: ["-T", "-i", target, "-o", outDir, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -73,7 +71,7 @@ export async function register(server: McpServer): Promise<void> {
         appendToolRun(target, "steghide_extract");
         const args = ["extract", "-sf", target, "-f"];
         if (passphrase) args.push("-p", passphrase);
-        else args.push("-p", ""); // Try empty passphrase
+        else args.push("-p", "");
 
         const result = await exec({
           tool: "steghide",
@@ -92,16 +90,15 @@ export async function register(server: McpServer): Promise<void> {
       "PNG/BMP steganography LSB analysis.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-a"),
+        flags: SafeFlagsSchema.default(["-a"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "zsteg_analyze");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "zsteg",
           target,
-          args: [...extraFlags, target],
+          args: [...flags, target],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -115,16 +112,15 @@ export async function register(server: McpServer): Promise<void> {
       "Read file metadata.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "exiftool_read");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "exiftool",
           target,
-          args: ["-json", ...extraFlags, target],
+          args: ["-json", ...flags, target],
           timeout,
         });
         try {
@@ -150,16 +146,15 @@ export async function register(server: McpServer): Promise<void> {
       "RSA key analysis.",
       {
         target: TargetSchema.describe("Public key file"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "rsatool_analyze");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "rsatool",
           target,
-          args: [...extraFlags, "-n", target],
+          args: [...flags, "-n", target],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

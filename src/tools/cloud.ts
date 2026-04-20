@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("prowler")) {
@@ -13,17 +13,16 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema.describe("Target account/env name for logging"),
         provider: z.enum(["aws", "azure", "gcp"]).describe("Cloud provider"),
-        flags: FlagsSchema.default(""),
-        timeout: TimeoutSchema.default(3600), // Prowler takes a long time
+        flags: SafeFlagsSchema,
+        timeout: TimeoutSchema.default(3600),
       },
       async ({ target, provider, flags, timeout }) => {
         appendToolRun(target, "prowler_assess");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outDir = `/tmp/nexus-mcp/prowler_${Date.now()}`;
         const result = await exec({
           tool: "prowler",
           target,
-          args: [provider, "-M", "json", "-F", outDir, ...extraFlags],
+          args: [provider, "-M", "json", "-F", outDir, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -38,17 +37,16 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         target_type: z.enum(["image", "fs", "repo", "k8s"]).default("fs"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, target_type, flags, timeout }) => {
         appendToolRun(target, "trivy_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/trivy_${Date.now()}.json`;
         const result = await exec({
           tool: "trivy",
           target,
-          args: [target_type, "--format", "json", "-o", outPath, ...extraFlags, target],
+          args: [target_type, "--format", "json", "-o", outPath, ...flags, target],
           timeout,
         });
 
@@ -88,15 +86,14 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         active: z.boolean().default(false).describe("Enable active hunting"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, active, flags, timeout }) => {
         appendToolRun(target, "kube_hunter_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const args = ["--remote", target, "--report", "json"];
         if (active) args.push("--active");
-        args.push(...extraFlags);
+        args.push(...flags);
 
         const result = await exec({
           tool: "kube-hunter",
@@ -104,7 +101,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        
+
         try {
              const cleanJson = result.raw_truncated.substring(result.raw_truncated.indexOf('{'));
              const obj = JSON.parse(cleanJson);
@@ -130,16 +127,15 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema.describe("Session or target name"),
         module: z.string().describe("Pacu module to run"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, module, flags, timeout }) => {
         appendToolRun(target, "pacu_run");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "pacu",
           target,
-          args: ["--session", target, "--module-name", module, "--exec", ...extraFlags], // Simple non-interactive execution
+          args: ["--session", target, "--module-name", module, "--exec", ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

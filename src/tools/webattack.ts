@@ -4,7 +4,7 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 import { resolveWordlist } from "../utils/wordlists.js";
 
 export async function register(server: McpServer): Promise<void> {
@@ -14,16 +14,16 @@ export async function register(server: McpServer): Promise<void> {
       "Automatic SQL injection and database takeover.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("--batch"),
+        flags: SafeFlagsSchema.default(["--batch"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "sqlmap_scan");
-        const extraFlags = flags.split(" ").filter(Boolean).filter(f => !f.includes("--dump")); // Prevent dumping
+        const safeFlags = flags.filter(f => f !== "--dump" && !f.startsWith("--dump"));
         const result = await exec({
           tool: "sqlmap",
           target,
-          args: ["-u", target, "--batch", "--output-dir=/tmp/nexus-mcp/sqlmap", ...extraFlags],
+          args: ["-u", target, "--batch", "--output-dir=/tmp/nexus-mcp/sqlmap", ...safeFlags],
           timeout,
           parse: getParser("sqlmap"),
         });
@@ -38,17 +38,16 @@ export async function register(server: McpServer): Promise<void> {
       "Fast, powerful XSS scanner and utility tool.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "dalfox_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/dalfox_${Date.now()}.json`;
         const result = await exec({
           tool: "dalfox",
           target,
-          args: ["url", target, "--format", "json", "-o", outPath, ...extraFlags],
+          args: ["url", target, "--format", "json", "-o", outPath, ...flags],
           timeout,
         });
 
@@ -77,17 +76,16 @@ export async function register(server: McpServer): Promise<void> {
       "HTTP parameter discovery suite.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "arjun_discover");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/arjun_${Date.now()}.json`;
         const result = await exec({
           tool: "arjun",
           target,
-          args: ["-u", target, "-oJ", outPath, ...extraFlags],
+          args: ["-u", target, "-oJ", outPath, ...flags],
           timeout,
         });
 
@@ -117,16 +115,15 @@ export async function register(server: McpServer): Promise<void> {
       "Hidden parameter discovery suite.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "x8_discover");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "x8",
           target,
-          args: ["-u", target, ...extraFlags], // x8 text output to stdout
+          args: ["-u", target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -140,14 +137,13 @@ export async function register(server: McpServer): Promise<void> {
       "Black box WordPress vulnerability scanner.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "wpscan_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/wpscan_${Date.now()}.json`;
-        const args = ["--url", target, "--format", "json", "-o", outPath, ...extraFlags];
+        const args = ["--url", target, "--format", "json", "-o", outPath, ...flags];
         if (process.env.WPSCAN_API_TOKEN) {
             args.push("--api-token", process.env.WPSCAN_API_TOKEN);
         }
@@ -163,7 +159,6 @@ export async function register(server: McpServer): Promise<void> {
         if (jsonRaw) {
              try {
                  const obj = JSON.parse(jsonRaw);
-                 // Very basic parsing for summary
                  result.summary = `WPScan completed on ${target}`;
              } catch { /* ignore */ }
         }
@@ -179,16 +174,15 @@ export async function register(server: McpServer): Promise<void> {
       "Automated NoSQL database exploitation.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "nosqlmap_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "nosqlmap",
           target,
-          args: ["--batch", ...extraFlags],
+          args: ["--batch", ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -202,16 +196,15 @@ export async function register(server: McpServer): Promise<void> {
       "Server-side template injection and Web server exploitation.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("--level 3"),
+        flags: SafeFlagsSchema.default(["--level", "3"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "tplmap_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "tplmap",
           target,
-          args: ["-u", target, ...extraFlags],
+          args: ["-u", target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -225,16 +218,16 @@ export async function register(server: McpServer): Promise<void> {
       "Automated OS command injection exploitation tool.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "commix_scan");
-        const extraFlags = flags.split(" ").filter(Boolean).filter(f => !f.includes("--os-cmd"));
+        const safeFlags = flags.filter(f => f !== "--os-cmd" && !f.startsWith("--os-cmd"));
         const result = await exec({
           tool: "commix",
           target,
-          args: ["--url", target, "--batch", ...extraFlags],
+          args: ["--url", target, "--batch", ...safeFlags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -249,16 +242,15 @@ export async function register(server: McpServer): Promise<void> {
       "Toolkit for validating, forging and cracking JWTs.",
       {
         target: TargetSchema.describe("JWT Token or Target URL"),
-        flags: FlagsSchema.default("--mode at"),
+        flags: SafeFlagsSchema.default(["--mode", "at"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "jwt_tool_test");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: bin,
           target,
-          args: [target, ...extraFlags],
+          args: [target, ...flags],
           timeout,
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -272,15 +264,13 @@ export async function register(server: McpServer): Promise<void> {
       "Hostile subdomain takeover vulnerability routing.",
       {
         target: TargetSchema.describe("File containing subdomains or single domain"),
-        flags: FlagsSchema.default("-ssl"),
+        flags: SafeFlagsSchema.default(["-ssl"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "subjack_check");
-        const extraFlags = flags.split(" ").filter(Boolean);
-        const args = extraFlags;
+        const args = [...flags];
         if (!args.includes("-w") && !args.includes("-d")) {
-             // Assume target is a list of subdomains
              args.push("-w", target);
         }
         const result = await exec({

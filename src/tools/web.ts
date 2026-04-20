@@ -4,7 +4,7 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
-import { TargetSchema, FlagsSchema, TimeoutSchema } from "../types.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 import { resolveWordlist } from "../utils/wordlists.js";
 
 export async function register(server: McpServer): Promise<void> {
@@ -15,7 +15,7 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema.describe("Target URL with FUZZ keyword, e.g. http://x/FUZZ"),
         wordlist: z.string().optional().describe("Wordlist path or 'common'/'big'"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, wordlist, flags, timeout }) => {
@@ -23,14 +23,13 @@ export async function register(server: McpServer): Promise<void> {
         const wlPath = wordlist === "common" || wordlist === "big" 
           ? resolveWordlist(wordlist) 
           : (wordlist || resolveWordlist("common"));
-        
-        const extraFlags = flags.split(" ").filter(Boolean);
+
         const outPath = `/tmp/nexus-mcp/ffuf_${Date.now()}.json`;
-        
+
         const result = await exec({
           tool: "ffuf",
           target,
-          args: ["-w", wlPath, "-u", target, "-of", "json", "-o", outPath, ...extraFlags],
+          args: ["-w", wlPath, "-u", target, "-of", "json", "-o", outPath, ...flags],
           timeout,
         });
 
@@ -53,20 +52,19 @@ export async function register(server: McpServer): Promise<void> {
       "Fast, simple, recursive content discovery.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "feroxbuster_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/ferox_${Date.now()}.json`;
         const result = await exec({
           tool: "feroxbuster",
           target,
-          args: ["--url", target, "--json", "-o", outPath, ...extraFlags],
+          args: ["--url", target, "--json", "-o", outPath, ...flags],
           timeout,
         });
-        
+
         // Simple JSON parsing since no dedicated parser was requested in blueprint
         const jsonRaw = await readOutputFile(outPath);
         if (jsonRaw) {
@@ -91,18 +89,17 @@ export async function register(server: McpServer): Promise<void> {
       "Fast HTTP prober and tech detection.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-tech-detect -status-code -title"),
+        flags: SafeFlagsSchema.default(["-tech-detect", "-status-code", "-title"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "httpx_probe");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/httpx_${Date.now()}.json`;
         const result = await exec({
           tool: "httpx",
           target,
           // Support multiple targets if passed in a file or string? Let's just use -u for single
-          args: ["-u", target, "-json", "-o", outPath, ...extraFlags],
+          args: ["-u", target, "-json", "-o", outPath, ...flags],
           timeout,
         });
 
@@ -129,17 +126,16 @@ export async function register(server: McpServer): Promise<void> {
       {
         target: TargetSchema,
         depth: z.number().int().default(3).describe("Crawl depth"),
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, depth, flags, timeout }) => {
         appendToolRun(target, "katana_crawl");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/katana_${Date.now()}.json`;
         const result = await exec({
           tool: "katana",
           target,
-          args: ["-u", target, "-d", depth.toString(), "-json", "-o", outPath, ...extraFlags],
+          args: ["-u", target, "-d", depth.toString(), "-json", "-o", outPath, ...flags],
           timeout,
         });
 
@@ -166,17 +162,16 @@ export async function register(server: McpServer): Promise<void> {
       "Fetch known URLs from AlienVault, wayback, etc.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "gau_urls");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/gau_${Date.now()}.txt`;
         const result = await exec({
           tool: "gau",
           target,
-          args: [target, "--o", outPath, ...extraFlags],
+          args: [target, "--o", outPath, ...flags],
           timeout,
         });
 
@@ -198,17 +193,16 @@ export async function register(server: McpServer): Promise<void> {
       "Fast and customizable vulnerability scanner.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-as"), // Automatic selection
+        flags: SafeFlagsSchema.default(["-as"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "nuclei_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/nuclei_${Date.now()}.json`;
         const result = await exec({
           tool: "nuclei",
           target,
-          args: ["-u", target, "-j", "-o", outPath, ...extraFlags],
+          args: ["-u", target, "-j", "-o", outPath, ...flags],
           timeout,
         });
 
@@ -231,19 +225,18 @@ export async function register(server: McpServer): Promise<void> {
       "Web server scanner for vulnerabilities.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "nikto_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         // Note: Nikto's plain text output is parsed by parseNikto, no need for file output if we capture stdout,
         // but blueprint says "-h target -o /tmp/nexus-mcp/nikto_out.txt". Let's capture stdout instead so we don't need readOutputFile, unless it bypasses stdout.
         // Usually Nikto writes to stdout. We'll use stdout.
         const result = await exec({
           tool: "nikto",
           target,
-          args: ["-h", target, ...extraFlags],
+          args: ["-h", target, ...flags],
           timeout,
           parse: getParser("nikto"),
         });
@@ -258,20 +251,19 @@ export async function register(server: McpServer): Promise<void> {
       "Next generation web scanner (tech detection).",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "whatweb_detect");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const result = await exec({
           tool: "whatweb",
           target,
           // WhatWeb can output JSON to stdout with --log-json=- 
-          args: ["--log-json=-", ...extraFlags, target],
+          args: ["--log-json=-", ...flags, target],
           timeout,
         });
-        
+
         try {
             const arr = JSON.parse(result.raw_truncated);
             if (Array.isArray(arr) && arr.length > 0) {
@@ -297,17 +289,16 @@ export async function register(server: McpServer): Promise<void> {
       "Identify and fingerprint Web Application Firewalls.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default("-a"),
+        flags: SafeFlagsSchema.default(["-a"]),
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "wafw00f_detect");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/wafw00f_${Date.now()}.json`;
         const result = await exec({
           tool: "wafw00f",
           target,
-          args: [...extraFlags, "-o", outPath, target],
+          args: [...flags, "-o", outPath, target],
           timeout,
         });
 
@@ -338,17 +329,16 @@ export async function register(server: McpServer): Promise<void> {
       "Check TLS/SSL cipher, protocols and vulnerabilities.",
       {
         target: TargetSchema,
-        flags: FlagsSchema.default(""),
+        flags: SafeFlagsSchema,
         timeout: TimeoutSchema,
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "testssl_scan");
-        const extraFlags = flags.split(" ").filter(Boolean);
         const outPath = `/tmp/nexus-mcp/testssl_${Date.now()}.json`;
         const result = await exec({
           tool: "testssl",
           target,
-          args: ["--jsonfile", outPath, ...extraFlags, target],
+          args: ["--jsonfile", outPath, ...flags, target],
           timeout,
         });
 
