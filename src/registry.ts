@@ -26,6 +26,18 @@ export function setActiveProfile(p: Profile): void {
   activeProfile = p;
 }
 
+export function isToolAllowed(toolName: string, profile: Profile): boolean {
+  if (profile === "full") return true;
+  
+  // Meta tools are available in all profiles to manage the session
+  const metaTools = [
+    "switch_phase", "pentest_notes", "chain_tools", "attack_chain_suggest", "generate_report"
+  ];
+  if (metaTools.includes(toolName)) return true;
+  
+  return PROFILES[profile]?.includes(toolName) ?? false;
+}
+
 /**
  * Registers ALL tools from all modules at startup.
  * The MCP SDK doesn't support unregistering tools or hot-swapping schemas after connect.

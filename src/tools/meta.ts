@@ -20,6 +20,14 @@ export async function register(server: McpServer): Promise<void> {
     },
     async ({ profile }) => {
       setActiveProfile(profile as Profile);
+      // Notify client that tools have changed so it refetches the list
+      try {
+        if ((server.server as any).sendToolListChanged) {
+          await (server.server as any).sendToolListChanged();
+        }
+      } catch (e) {
+        // Ignore if client doesn't support it or not connected yet
+      }
       return { content: [{ type: "text", text: `Profile switched to ${profile}. LLM should now rely on tools for this phase.` }] };
     }
   );

@@ -17,7 +17,7 @@ Nexus MCP is a high-performance stdio Model Context Protocol (MCP) server specif
 Nexus MCP categorizes its capabilities into different toolsets and allows loading specific **Profiles** to tailor the AI's context window and available tools based on the task at hand.
 
 ### Supported Profiles
-When starting the server, you can load specific profiles to narrow down or expand the available tools:
+When starting the server, you can load specific profiles to narrow down or expand the available tools. **Profile switching strictly limits the available tools exposed to the LLM**, effectively reducing context window usage and focusing the AI on the task at hand. You can use the `switch_phase` tool to dynamically change profiles during a session, which will refresh the tool list in the client.
 - `recon`: Reconnaissance and discovery tools.
 - `web`: Web application assessment tools.
 - `ctf`: Tools tailored for Capture The Flag competitions.
@@ -25,7 +25,7 @@ When starting the server, you can load specific profiles to narrow down or expan
 - `cloud`: Cloud security assessment tools.
 - `osint`: Open Source Intelligence gathering.
 - `network`: Network-level assessment tools.
-- `full`: Loads all available capabilities.
+- `full`: Loads all available capabilities (useful when context limits are not an issue).
 
 ### Tool Categories
 - **Reconnaissance** (`recon`): Asset discovery, port scanning, and topology mapping.
