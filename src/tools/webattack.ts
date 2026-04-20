@@ -4,8 +4,23 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
-import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
-import { resolveWordlist } from "../utils/wordlists.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
+import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+
+/** Helper to build a path-rejection ToolResult */
+function pathRejection(tool: string, target: string, path: string): any {
+  return {
+    tool,
+    target,
+    summary: `Rejected unsafe path: ${path}`,
+    findings: [],
+    severity: "info" as const,
+    cached: false,
+    duration_ms: 0,
+    raw_truncated: "",
+    error: `Path sandboxing rejected: ${path} is outside allowed directories.`,
+  };
+}
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("sqlmap")) {
@@ -93,7 +108,7 @@ export async function register(server: McpServer): Promise<void> {
         if (jsonRaw) {
              try {
                  const obj = JSON.parse(jsonRaw);
-                 result.findings = Object.keys(obj).flatMap(url => 
+                 result.findings = Object.keys(obj).flatMap(url =>
                      obj[url].params.map((p: string) => ({
                          type: "parameter",
                          value: p,
@@ -269,9 +284,16 @@ export async function register(server: McpServer): Promise<void> {
       },
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "subjack_check");
+
+        // Validate target file path (subjack accepts files via -w)
+        const validatedTarget = validatePath(target, ALLOWED_WORDLIST_ROOTS);
+        if (!validatedTarget) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("subjack", target, target), null, 2) }] };
+        }
+
         const args = [...flags];
         if (!args.includes("-w") && !args.includes("-d")) {
-             args.push("-w", target);
+             args.push("-w", validatedTarget);
         }
         const result = await exec({
           tool: "subjack",

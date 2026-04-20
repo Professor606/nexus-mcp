@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolve } from "node:path";
 
 // ── Severity ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,18 @@ export type Profile =
   | "cloud"
   | "osint"
   | "full";
+
+// ── Path Sandboxing ─────────────────────────────────────────────────────────
+
+/**
+ * Validate that a resolved absolute path stays within one of the allowed roots.
+ * Returns the resolved path if allowed, or null if it escapes the sandbox.
+ */
+export function validatePath(input: string, allowedRoots: string[]): string | null {
+  const resolved = resolve(input);
+  const isAllowed = allowedRoots.some(root => resolved.startsWith(resolve(root)));
+  return isAllowed ? resolved : null;
+}
 
 // ── Zod Base Schemas ──────────────────────────────────────────────────────────
 

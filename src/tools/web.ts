@@ -4,8 +4,23 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
-import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
-import { resolveWordlist } from "../utils/wordlists.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
+import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+
+/** Helper to build a path-rejection ToolResult */
+function pathRejection(tool: string, target: string, path: string): any {
+  return {
+    tool,
+    target,
+    summary: `Rejected unsafe path: ${path}`,
+    findings: [],
+    severity: "info" as const,
+    cached: false,
+    duration_ms: 0,
+    raw_truncated: "",
+    error: `Path sandboxing rejected: ${path} is outside allowed directories.`,
+  };
+}
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("ffuf")) {
@@ -20,9 +35,13 @@ export async function register(server: McpServer): Promise<void> {
       },
       async ({ target, wordlist, flags, timeout }) => {
         appendToolRun(target, "ffuf_scan");
-        const wlPath = wordlist === "common" || wordlist === "big" 
-          ? resolveWordlist(wordlist) 
-          : (wordlist || resolveWordlist("common"));
+        const wlPath = wordlist === "common" || wordlist === "big"
+          ? resolveWordlist(wordlist)
+          : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("common"));
+
+        if (wordlist && !wlPath) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("ffuf", target, wordlist), null, 2) }] };
+        }
 
         const outPath = `/tmp/nexus-mcp/ffuf_${Date.now()}.json`;
 
@@ -259,7 +278,7 @@ export async function register(server: McpServer): Promise<void> {
         const result = await exec({
           tool: "whatweb",
           target,
-          // WhatWeb can output JSON to stdout with --log-json=- 
+          // WhatWeb can output JSON to stdout with --log-json=-
           args: ["--log-json=-", ...flags, target],
           timeout,
         });

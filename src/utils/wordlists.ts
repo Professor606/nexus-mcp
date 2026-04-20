@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import { resolve } from "node:path";
+import { validatePath } from "../types.js";
 
 // ── SecLists roots ────────────────────────────────────────────────────────────
 
@@ -8,11 +10,23 @@ const SECLISTS_ROOTS = [
   "/opt/SecLists",
   `${process.env.HOME}/SecLists`,
   `${process.env.HOME}/tools/SecLists`,
+  `${process.env.HOME}/SecLists`,
 ];
 
 const WORDLISTS_ROOTS = [
   "/usr/share/dirb/wordlists",
   "/usr/share/wordlists",
+  `${process.env.HOME}/wordlists`,
+];
+
+// ── Allowed roots for user-provided paths ────────────────────────────────────
+
+export const ALLOWED_WORDLIST_ROOTS = [
+  "/usr/share/seclists",
+  "/usr/share/wordlists",
+  "/opt/SecLists",
+  `${process.env.HOME}/SecLists`,
+  process.env.NEXUS_OUTPUT_DIR || "/tmp/nexus-mcp",
 ];
 
 // ── Resolved paths ────────────────────────────────────────────────────────────
@@ -69,8 +83,27 @@ const FALLBACKS: Record<WordlistName, string[]> = {
 
 /**
  * Resolve a wordlist name to an absolute path that actually exists.
- * Returns empty string if none found — callers should handle gracefully.
+ * If the input is a known preset name, returns the built-in path.
+ * If the input is a user-provided path, validates it against ALLOWED_WORDLIST_ROOTS.
+ * Returns empty string if none found or if the path is rejected — callers should handle gracefully.
  */
-export function resolveWordlist(name: WordlistName): string {
-  return FALLBACKS[name].find((p) => p && fs.existsSync(p)) ?? "";
+export function resolveWordlist(name: WordlistName | string): string {
+  // Handle preset names
+  if (name in FALLBACKS) {
+    return FALLBACKS[name as WordlistName].find((p) => p && fs.existsSync(p)) ?? "";
+  }
+
+  // User-provided path — validate against sandbox
+  const validated = validatePath(name, ALLOWED_WORDLIST_ROOTS);
+  if (!validated) {
+    console.error(`[nexus-mcp] Rejected wordlist path outside allowed roots: ${name}`);
+    return "";
+  }
+
+  if (!fs.existsSync(validated)) {
+    console.error(`[nexus-mcp] Wordlist not found: ${validated}`);
+    return "";
+  }
+
+  return validated;
 }

@@ -3,8 +3,23 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
-import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
-import { resolveWordlist } from "../utils/wordlists.js";
+import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
+import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+
+/** Helper to build a path-rejection ToolResult */
+function pathRejection(tool: string, target: string, path: string): any {
+  return {
+    tool,
+    target,
+    summary: `Rejected unsafe path: ${path}`,
+    findings: [],
+    severity: "info" as const,
+    cached: false,
+    duration_ms: 0,
+    raw_truncated: "",
+    error: `Path sandboxing rejected: ${path} is outside allowed directories.`,
+  };
+}
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("hydra")) {
@@ -25,7 +40,10 @@ export async function register(server: McpServer): Promise<void> {
         if (username) {
             args.push(username.startsWith("/") ? "-L" : "-l", username);
         }
-        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist || resolveWordlist("passwords"));
+        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
+        if (wordlist && !wlPath) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("hydra", target, wordlist), null, 2) }] };
+        }
         if (wlPath) {
             args.push("-P", wlPath);
         }
@@ -61,9 +79,22 @@ export async function register(server: McpServer): Promise<void> {
            extraFlags.push("--opencl-device-types", "1,2");
         }
 
-        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist || resolveWordlist("passwords"));
+        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
+        if (wordlist && !wlPath) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("hashcat", target, wordlist), null, 2) }] };
+        }
 
-        const args = ["-m", mode, ...extraFlags, target];
+        // Validate target if it looks like a file path (not a hash string)
+        let safeTarget = target;
+        if (target.startsWith("/") || target.includes("..")) {
+          const validated = validatePath(target, ALLOWED_WORDLIST_ROOTS);
+          if (!validated) {
+            return { content: [{ type: "text", text: JSON.stringify(pathRejection("hashcat", target, target), null, 2) }] };
+          }
+          safeTarget = validated;
+        }
+
+        const args = ["-m", mode, ...extraFlags, safeTarget];
         if (wlPath) {
             args.push(wlPath);
         }
@@ -91,13 +122,22 @@ export async function register(server: McpServer): Promise<void> {
       },
       async ({ target, wordlist, flags, timeout }) => {
         appendToolRun(target, "john_crack");
-        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist || resolveWordlist("passwords"));
+        const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
+        if (wordlist && !wlPath) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("john", target, wordlist), null, 2) }] };
+        }
+
+        // Validate target file path
+        const validatedTarget = validatePath(target, ALLOWED_WORDLIST_ROOTS);
+        if (!validatedTarget) {
+          return { content: [{ type: "text", text: JSON.stringify(pathRejection("john", target, target), null, 2) }] };
+        }
 
         const args = [...flags];
         if (wlPath) {
             args.push(`--wordlist=${wlPath}`);
         }
-        args.push(target);
+        args.push(validatedTarget);
 
         const result = await exec({
           tool: "john",
