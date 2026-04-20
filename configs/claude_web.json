@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "nexus-mcp-web": {
+      "command": "node",
+      "args": [
+        "/home/ahmad/mcp/nexus-mcp/dist/index.js",
+        "--profile",
+        "web"
+      ],
+      "env": {
+        "SHODAN_API_KEY": "your_key_here",
+        "SPIDERFOOT_API_KEY": "your_key_here",
+        "WPSCAN_API_TOKEN": "your_key_here"
+      }
+    }
+  }
+}

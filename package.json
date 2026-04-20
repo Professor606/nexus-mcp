@@ -1,0 +1,32 @@
+{
+  "name": "nexus-mcp",
+  "version": "1.0.0",
+  "description": "High-performance stdio MCP server for penetration testing",
+  "type": "module",
+  "bin": { "nexus-mcp": "./dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "start:recon": "node dist/index.js --profile recon",
+    "start:web": "node dist/index.js --profile web",
+    "start:ctf": "node dist/index.js --profile ctf",
+    "start:full": "node dist/index.js --profile full",
+    "start:bugbounty": "node dist/index.js --profile bugbounty",
+    "start:cloud": "node dist/index.js --profile cloud",
+    "start:osint": "node dist/index.js --profile osint",
+    "start:network": "node dist/index.js --profile network"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.0",
+    "execa": "^9.0.0",
+    "p-limit": "^6.1.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.16.0",
+    "@types/node": "^22.0.0"
+  }
+}
