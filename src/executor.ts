@@ -10,6 +10,22 @@ import type { ToolResult, Finding, ParserFn } from "./types.js";
 const MAX_CONCURRENCY = Number(process.env.MAX_CONCURRENCY) || 4;
 const limit = pLimit(MAX_CONCURRENCY);
 
+const QUEUE_TIMEOUT_MS = Number(process.env.NEXUS_QUEUE_TIMEOUT_MS) || 30_000;
+const CIRCUIT_BREAKER_THRESHOLD = 3; // errors before opening
+const CIRCUIT_BREAKER_RESET_MS = 60_000;
+
+const circuitState = new Map<string, { failures: number; lastFailure: number; open: boolean }>();
+
+export function getQueueStats(): { pending: number; active: number; circuitBreakers: string[] } {
+  return {
+    pending: limit.pendingCount,
+    active: limit.activeCount,
+    circuitBreakers: Array.from(circuitState.entries())
+      .filter(([_, state]) => state.open)
+      .map(([tool]) => tool)
+  };
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ExecOptions {
@@ -94,8 +110,43 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
     }
   }
 
+  // Circuit breaker check & reset
+  const toolState = circuitState.get(opts.tool) || { failures: 0, lastFailure: 0, open: false };
+  if (toolState.open) {
+    if (Date.now() - toolState.lastFailure > CIRCUIT_BREAKER_RESET_MS) {
+      toolState.open = false;
+      toolState.failures = 0;
+      circuitState.set(opts.tool, toolState);
+    } else {
+      return {
+        tool: opts.tool,
+        target: opts.target,
+        summary: `Circuit breaker open for ${opts.tool} due to repeated failures`,
+        findings: [],
+        cached: false,
+        duration_ms: 0,
+        raw_truncated: "",
+        error: `Circuit breaker open for ${opts.tool} due to repeated failures`
+      };
+    }
+  }
+
   // Subprocess execution (concurrency limited)
+  const queueStart = Date.now();
   return limit(async () => {
+    const queueWait = Date.now() - queueStart;
+    if (queueWait > QUEUE_TIMEOUT_MS) {
+      return {
+        tool: opts.tool,
+        target: opts.target,
+        summary: "Request timed out waiting in execution queue",
+        findings: [],
+        cached: false,
+        duration_ms: queueWait,
+        raw_truncated: "",
+        error: `Queue timeout: waited ${queueWait}ms, max ${QUEUE_TIMEOUT_MS}ms`
+      };
+    }
     let rawOutput = "";
     let error: string | undefined;
 
@@ -114,6 +165,10 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
           `duration=${Date.now() - start}ms`
         );
       }
+
+      if (result.failed && result.exitCode === undefined) {
+        throw new Error(result.shortMessage || "Command failed to start or timed out");
+      }
     } catch (e) {
       const err = e as Error & {
         all?: string;
@@ -123,6 +178,18 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
       rawOutput = err.all ?? err.stdout ?? "";
       error = err.shortMessage ?? err.message ?? "Unknown error";
       console.error(`[nexus-mcp] exec error [${opts.tool}]: ${error}`);
+
+      const state = circuitState.get(opts.tool) || { failures: 0, lastFailure: 0, open: false };
+      state.failures++;
+      state.lastFailure = Date.now();
+      if (state.failures >= CIRCUIT_BREAKER_THRESHOLD) {
+        state.open = true;
+      }
+      circuitState.set(opts.tool, state);
+    }
+
+    if (!error) {
+      circuitState.set(opts.tool, { failures: 0, lastFailure: 0, open: false });
     }
 
     const cleaned = cleanOutput(rawOutput);
