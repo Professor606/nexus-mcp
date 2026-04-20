@@ -2,7 +2,12 @@ node_modules
 dist
 .env
 .env.*
-test*
+
+# Tests & Build cache
+coverage/
+*.tsbuildinfo
+
+# Personal
 ImplementationPlan.md
 
 # Logs
@@ -26,6 +31,3 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-
-
-

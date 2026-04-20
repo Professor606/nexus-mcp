@@ -17,18 +17,23 @@
     "start:bugbounty": "node dist/index.js --profile bugbounty",
     "start:cloud": "node dist/index.js --profile cloud",
     "start:osint": "node dist/index.js --profile osint",
-    "start:network": "node dist/index.js --profile network"
+    "start:network": "node dist/index.js --profile network",
+    "test": "node --experimental-vm-modules node_modules/jest-cli/bin/jest.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.23.0",
+    "dotenv": "^16.4.0",
     "execa": "^9.0.0",
     "p-limit": "^6.1.0",
-    "dotenv": "^16.4.0"
+    "zod": "^3.23.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^22.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
     "tsx": "^4.16.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.5.0"
   }
 }

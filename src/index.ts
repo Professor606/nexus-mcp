@@ -14,6 +14,7 @@ const { values } = parseArgs({
     profile: { type: "string", short: "p", default: "recon" },
     "cache-ttl": { type: "string", default: "3600" },
     debug: { type: "boolean", default: false },
+    "enable-exploit": { type: "boolean", default: false },
   },
   strict: false,
 });
@@ -23,6 +24,11 @@ const profile = (values.profile ?? "recon") as Profile;
 if (values.debug) {
   process.env.DEBUG = "true";
   console.error(`[nexus-mcp] Debug mode ON`);
+}
+
+if (values["enable-exploit"]) {
+  process.env.NEXUS_ENABLE_EXPLOIT = "true";
+  console.error(`[nexus-mcp] Exploit tools ENABLED (pwntools_run, angr_analyze, libc_database_lookup)`);
 }
 
 process.env.CACHE_TTL_SECONDS = values["cache-ttl"] as string;
