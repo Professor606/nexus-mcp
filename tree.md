@@ -48,5 +48,6 @@ nexus-mcp
 │       └── wordlists.ts
 ├── tests
 │   └── exploit.test.ts
-├── Tree.md
-└── tsconfig.json
+├── tree.md
+├── tsconfig.json
+└── tsconfig.test.json
