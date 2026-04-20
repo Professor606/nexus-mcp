@@ -90,13 +90,72 @@ export function validatePath(input: string, allowedRoots: string[]): string | nu
 
 // ── Zod Base Schemas ──────────────────────────────────────────────────────────
 
+/** Rejects shell metacharacters to prevent command injection */
+const SHELL_METACHAR_REGEX = /[;&|`$(){}[\]\\]/;
+
+/**
+ * Hardened target schema.
+ * Blocks shell metacharacters and enforces a strict character whitelist.
+ */
 export const TargetSchema = z
   .string()
   .min(1)
-  .describe("IP address, domain, URL, or file path");
+  .max(2048)
+  .refine(
+    (val) => !SHELL_METACHAR_REGEX.test(val),
+    { message: "Target contains dangerous characters" }
+  )
+  .refine(
+    (val) => {
+      // URL / IP / file-path character set (shell metas already filtered above)
+      // OR a simple domain/hostname-like string
+      return (
+        /^[a-zA-Z0-9._~:\/?#@\[\]!*+,-=%]+$/.test(val) ||
+        /^[a-zA-Z0-9._-]+$/.test(val)
+      );
+    },
+    { message: "Invalid target format" }
+  );
 
-/** Rejects shell metacharacters to prevent command injection */
-const SHELL_METACHAR_REGEX = /[;&|`$(){}[\]\\]/;
+/**
+ * URL target schema for tools that legitimately need query parameters.
+ * Requires percent-encoding of dangerous characters.
+ */
+export const UrlTargetSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine(
+    (val) => {
+      const withoutEncoded = val.replace(/%[0-9A-Fa-f]{2}/g, "");
+      return !SHELL_METACHAR_REGEX.test(withoutEncoded);
+    },
+    { message: "URL contains unencoded dangerous characters" }
+  )
+  .refine(
+    (val) => {
+      return (
+        /^[a-zA-Z0-9._~:\/?#@\[\]!$&'()*+,;=%-]+$/.test(val) ||
+        /^[a-zA-Z0-9._-]+$/.test(val)
+      );
+    },
+    { message: "Invalid URL format" }
+  );
+
+/**
+ * Sanitize a target string.
+ * - Strips null bytes
+ * - Collapses multiple path separators
+ * - Rejects flag injection (strings starting with "-")
+ */
+export function sanitizeTarget(input: string): string {
+  let sanitized = input.replace(/\0/g, "");
+  sanitized = sanitized.replace(/\/+/g, "/");
+  if (sanitized.startsWith("-")) {
+    throw new Error("Target cannot start with '-' (flag injection attempt)");
+  }
+  return sanitized;
+}
 
 /**
  * Safe structured flags schema.

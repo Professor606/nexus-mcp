@@ -2,6 +2,7 @@ import { execa } from "execa";
 import pLimit from "p-limit";
 import { cleanOutput } from "./utils/clean.js";
 import { cacheGet, cacheSet, buildKey } from "./cache.js";
+import { TargetSchema, UrlTargetSchema, sanitizeTarget } from "./types.js";
 import type { ToolResult, Finding } from "./types.js";
 
 // ── Concurrency guard ─────────────────────────────────────────────────────────
@@ -38,6 +39,32 @@ export interface ExecOptions {
  */
 export async function exec(opts: ExecOptions): Promise<ToolResult> {
   const start = Date.now();
+
+  // ── Pre-flight target validation ─────────────────────────────────────────
+  try {
+    const sanitized = sanitizeTarget(opts.target);
+    const targetOk = TargetSchema.safeParse(sanitized).success;
+    const urlOk    = UrlTargetSchema.safeParse(sanitized).success;
+    if (!targetOk && !urlOk) {
+      throw new Error("Target failed validation");
+    }
+  } catch (validationErr) {
+    const msg =
+      validationErr instanceof Error
+        ? validationErr.message
+        : String(validationErr);
+    return {
+      tool: opts.tool,
+      target: opts.target,
+      summary: `Target validation failed: ${msg}`,
+      findings: [],
+      cached: false,
+      duration_ms: 0,
+      raw_truncated: "",
+      error: `Target validation failed: ${msg}`,
+    };
+  }
+
   const cacheKey = buildKey(opts.tool, opts.args);
 
   // Cache check
