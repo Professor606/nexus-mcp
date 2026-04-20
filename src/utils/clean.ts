@@ -43,3 +43,46 @@ export function truncateToTokenBudget(
     `\n... [truncated — ${estimateTokens(text)} tokens, showing first ${maxTokens}]`
   );
 }
+
+/**
+ * Truncate strings to max lengths and remove non-printable characters.
+ * Retains printable ASCII, tabs, and newlines.
+ */
+export function sanitizeOutput(str: string, maxLength: number): string {
+  if (!str) return "";
+  let s = str.slice(0, maxLength);
+  // Keep printable ASCII (x20-x7E), tabs (x09), newlines (x0A), carriage returns (x0D)
+  s = s.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "");
+  return s;
+}
+
+/**
+ * Stringify JSON safely, handling circular references, BigInts, and undefined.
+ */
+export function forceSafeJson(value: any, replacer?: any, space?: string | number): string {
+  const seen = new WeakSet();
+  return JSON.stringify(
+    value,
+    (key, val) => {
+      if (typeof val === "object" && val !== null) {
+        if (seen.has(val)) {
+          return "[Circular]";
+        }
+        seen.add(val);
+      }
+      if (typeof val === "bigint") {
+        return val.toString();
+      }
+      if (typeof val === "undefined") {
+        return null;
+      }
+      // Combine with user-provided replacer if it's a function
+      if (typeof replacer === "function") {
+        return replacer(key, val);
+      }
+      return val;
+    },
+    space
+  );
+}
+

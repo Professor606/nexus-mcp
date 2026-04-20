@@ -5,6 +5,7 @@ import { saveNote, loadNote, appendFindings, clearNote, allTargets, setPhase } f
 import { setActiveProfile, getActiveProfile } from "../registry.js";
 import type { Finding, Profile } from "../types.js";
 import { CVSS_MAP, sanitizeFlags } from "../types.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 function getSeverityNumber(sev: string): number {
     return CVSS_MAP[sev as keyof typeof CVSS_MAP] || 0.0;
@@ -42,7 +43,7 @@ export async function register(server: McpServer): Promise<void> {
     },
     async ({ action, target, data }) => {
       if (action === "list_targets") {
-          return { content: [{ type: "text", text: JSON.stringify(allTargets(), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(allTargets(), null, 2) }] };
       }
       if (!target) return { content: [{ type: "text", text: "Error: target required" }] };
 
@@ -52,11 +53,11 @@ export async function register(server: McpServer): Promise<void> {
       }
       if (action === "load") {
           const note = loadNote(target);
-          return { content: [{ type: "text", text: note ? JSON.stringify(note, null, 2) : "No notes found" }] };
+          return { content: [{ type: "text", text: note ? forceSafeJson(note, null, 2) : "No notes found" }] };
       }
       if (action === "save") {
           const note = saveNote(target, data as any);
-          return { content: [{ type: "text", text: JSON.stringify(note, null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(note, null, 2) }] };
       }
       if (action === "append") {
           if (data && data.phase) setPhase(target, data.phase as string);
@@ -95,7 +96,7 @@ export async function register(server: McpServer): Promise<void> {
       }
       appendFindings(target, allFindings);
 
-      return { content: [{ type: "text", text: JSON.stringify({ results, merged_findings: allFindings }, null, 2) }] };
+      return { content: [{ type: "text", text: forceSafeJson({ results, merged_findings: allFindings }, null, 2) }] };
     }
   );
 
@@ -143,7 +144,7 @@ export async function register(server: McpServer): Promise<void> {
       }
 
       note.next_steps = suggestions;
-      return { content: [{ type: "text", text: JSON.stringify(suggestions, null, 2) }] };
+      return { content: [{ type: "text", text: forceSafeJson(suggestions, null, 2) }] };
     }
   );
 
@@ -159,7 +160,7 @@ export async function register(server: McpServer): Promise<void> {
       if (!note) return { content: [{ type: "text", text: "No notes found for target." }] };
 
       if (format === "json") {
-          return { content: [{ type: "text", text: JSON.stringify(note, null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(note, null, 2) }] };
       }
 
       const sortedFindings = [...note.findings].sort((a, b) => getSeverityNumber(b.severity || "info") - getSeverityNumber(a.severity || "info"));

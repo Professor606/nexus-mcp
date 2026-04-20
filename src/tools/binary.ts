@@ -5,6 +5,7 @@ import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
 import fs from "node:fs/promises";
+import { forceSafeJson } from "../utils/clean.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("gdb")) {
@@ -26,7 +27,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-q", "-batch", "-x", scriptPath, target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -48,7 +49,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-A", "-q", "-c", commands, target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -75,7 +76,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -98,7 +99,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [...flags, target, "-C", outDir],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -132,7 +133,7 @@ export async function register(server: McpServer): Promise<void> {
              );
              result.summary = `checksec analyzed ${target}`;
         } catch { /* ignore */ }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -185,7 +186,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["--file", target, "--search", search],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -206,7 +207,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

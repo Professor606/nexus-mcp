@@ -4,6 +4,7 @@ import { exec } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("vol") || await isInstalled("volatility3") || await isInstalled("vol.py")) {
@@ -30,7 +31,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -53,7 +54,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-T", "-i", target, "-o", outDir, ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -79,7 +80,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -101,7 +102,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [...flags, target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -135,7 +136,7 @@ export async function register(server: McpServer): Promise<void> {
               }));
            }
         } catch { /* ignore */ }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -157,7 +158,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [...flags, "-n", target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

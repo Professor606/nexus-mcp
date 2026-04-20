@@ -4,6 +4,7 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("sherlock")) {
@@ -23,7 +24,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["--json", "--print-found", ...flags, target],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -62,7 +63,7 @@ export async function register(server: McpServer): Promise<void> {
             result.summary = `Trufflehog found ${result.findings.length} secrets`;
         } catch { /* ignore */ }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -79,7 +80,7 @@ export async function register(server: McpServer): Promise<void> {
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "spiderfoot_scan");
         if (!process.env.SPIDERFOOT_API_KEY) {
-           return { content: [{ type: "text", text: JSON.stringify({ error: "SPIDERFOOT_API_KEY env var not set" }) }] };
+           return { content: [{ type: "text", text: forceSafeJson({ error: "SPIDERFOOT_API_KEY env var not set" }) }] };
         }
         const result = await exec({
           tool: "spiderfoot",
@@ -87,7 +88,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-t", target, "-q", ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -104,7 +105,7 @@ export async function register(server: McpServer): Promise<void> {
       async ({ target, flags, timeout }) => {
         appendToolRun(target, "shodan_search");
         if (!process.env.SHODAN_API_KEY) {
-            return { content: [{ type: "text", text: JSON.stringify({ error: "SHODAN_API_KEY env var not set" }) }] };
+            return { content: [{ type: "text", text: forceSafeJson({ error: "SHODAN_API_KEY env var not set" }) }] };
         }
         await exec({tool: "shodan", target, args: ["init", process.env.SHODAN_API_KEY]});
 
@@ -124,7 +125,7 @@ export async function register(server: McpServer): Promise<void> {
         }));
         result.summary = `Shodan found ${result.findings.length} results`;
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

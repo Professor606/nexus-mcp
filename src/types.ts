@@ -360,3 +360,25 @@ export const TimeoutSchema = z
   .max(3600)
   .default(300)
   .describe("Execution timeout in seconds (10–3600)");
+
+export const FindingSchema = z.object({
+  type: z.string().max(64),
+  value: z.string().max(1024),
+  detail: z.string().max(2048).optional(),
+  severity: z.enum(["info", "low", "medium", "high", "critical"]).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const ToolResultSchema = z.object({
+  tool: z.string().max(64),
+  target: z.string().max(2048),
+  summary: z.string().max(500),
+  findings: z.array(FindingSchema).max(1000),
+  severity: z.enum(["info", "low", "medium", "high", "critical"]).optional(),
+  cached: z.boolean(),
+  duration_ms: z.number().int().min(0).max(3_600_000),
+  raw_truncated: z.string().max(6000),
+  parse_error: z.boolean().optional(),
+  error: z.string().max(1000).optional(),
+});
+

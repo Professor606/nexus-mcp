@@ -6,6 +6,7 @@ import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
 import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 /** Helper to build a path-rejection ToolResult */
 function pathRejection(tool: string, target: string, path: string): any {
@@ -40,7 +41,7 @@ export async function register(server: McpServer): Promise<void> {
           : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("common"));
 
         if (wordlist && !wlPath) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("ffuf", target, wordlist), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("ffuf", target, wordlist), null, 2) }] };
         }
 
         const outPath = `/tmp/nexus-mcp/ffuf_${Date.now()}.json`;
@@ -60,7 +61,7 @@ export async function register(server: McpServer): Promise<void> {
           result.summary = parsed.summary;
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -97,7 +98,7 @@ export async function register(server: McpServer): Promise<void> {
             result.summary = `Feroxbuster found ${result.findings.length} items`;
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -133,7 +134,7 @@ export async function register(server: McpServer): Promise<void> {
              }).filter((x: any): x is any => x !== null);
              result.summary = `httpx probed ${result.findings.length} endpoints`;
         }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -170,7 +171,7 @@ export async function register(server: McpServer): Promise<void> {
              result.summary = `Katana crawled ${result.findings.length} URLs`;
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -201,7 +202,7 @@ export async function register(server: McpServer): Promise<void> {
             result.summary = `gau found ${urls.length} URLs`;
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -233,7 +234,7 @@ export async function register(server: McpServer): Promise<void> {
             result.summary = parsed.summary;
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -259,7 +260,7 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
           parse: getParser("nikto"),
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -297,7 +298,7 @@ export async function register(server: McpServer): Promise<void> {
             }
         } catch { /* ignore */ }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -337,7 +338,7 @@ export async function register(server: McpServer): Promise<void> {
              } catch { /* ignore */ }
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -375,7 +376,7 @@ export async function register(server: McpServer): Promise<void> {
              } catch { /* ignore */ }
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

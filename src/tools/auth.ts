@@ -5,6 +5,7 @@ import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
 import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 /** Helper to build a path-rejection ToolResult */
 function pathRejection(tool: string, target: string, path: string): any {
@@ -42,7 +43,7 @@ export async function register(server: McpServer): Promise<void> {
         }
         const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
         if (wordlist && !wlPath) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("hydra", target, wordlist), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("hydra", target, wordlist), null, 2) }] };
         }
         if (wlPath) {
             args.push("-P", wlPath);
@@ -55,7 +56,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -81,7 +82,7 @@ export async function register(server: McpServer): Promise<void> {
 
         const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
         if (wordlist && !wlPath) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("hashcat", target, wordlist), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("hashcat", target, wordlist), null, 2) }] };
         }
 
         // Validate target if it looks like a file path (not a hash string)
@@ -89,7 +90,7 @@ export async function register(server: McpServer): Promise<void> {
         if (target.startsWith("/") || target.includes("..")) {
           const validated = validatePath(target, ALLOWED_WORDLIST_ROOTS);
           if (!validated) {
-            return { content: [{ type: "text", text: JSON.stringify(pathRejection("hashcat", target, target), null, 2) }] };
+            return { content: [{ type: "text", text: forceSafeJson(pathRejection("hashcat", target, target), null, 2) }] };
           }
           safeTarget = validated;
         }
@@ -105,7 +106,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -124,13 +125,13 @@ export async function register(server: McpServer): Promise<void> {
         appendToolRun(target, "john_crack");
         const wlPath = wordlist === "passwords" ? resolveWordlist("passwords") : (wordlist ? resolveWordlist(wordlist) : resolveWordlist("passwords"));
         if (wordlist && !wlPath) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("john", target, wordlist), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("john", target, wordlist), null, 2) }] };
         }
 
         // Validate target file path
         const validatedTarget = validatePath(target, ALLOWED_WORDLIST_ROOTS);
         if (!validatedTarget) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("john", target, target), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("john", target, target), null, 2) }] };
         }
 
         const args = [...flags];
@@ -145,7 +146,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -181,7 +182,7 @@ export async function register(server: McpServer): Promise<void> {
            }
         } catch { /* ignore */ }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -210,7 +211,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

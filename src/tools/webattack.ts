@@ -6,6 +6,7 @@ import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema, validatePath } from "../types.js";
 import { resolveWordlist, ALLOWED_WORDLIST_ROOTS } from "../utils/wordlists.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 /** Helper to build a path-rejection ToolResult */
 function pathRejection(tool: string, target: string, path: string): any {
@@ -42,7 +43,7 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
           parse: getParser("sqlmap"),
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -80,7 +81,7 @@ export async function register(server: McpServer): Promise<void> {
              } catch { /* ignore */ }
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -119,7 +120,7 @@ export async function register(server: McpServer): Promise<void> {
                  result.summary = `Arjun discovered parameters on ${Object.keys(obj).length} URLs`;
              } catch { /* ignore */ }
         }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -141,7 +142,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-u", target, ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -178,7 +179,7 @@ export async function register(server: McpServer): Promise<void> {
              } catch { /* ignore */ }
         }
 
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -200,7 +201,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["--batch", ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -222,7 +223,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-u", target, ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -245,7 +246,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["--url", target, "--batch", ...safeFlags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -268,7 +269,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [target, ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -288,7 +289,7 @@ export async function register(server: McpServer): Promise<void> {
         // Validate target file path (subjack accepts files via -w)
         const validatedTarget = validatePath(target, ALLOWED_WORDLIST_ROOTS);
         if (!validatedTarget) {
-          return { content: [{ type: "text", text: JSON.stringify(pathRejection("subjack", target, target), null, 2) }] };
+          return { content: [{ type: "text", text: forceSafeJson(pathRejection("subjack", target, target), null, 2) }] };
         }
 
         const args = [...flags];
@@ -301,7 +302,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

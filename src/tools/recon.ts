@@ -5,6 +5,7 @@ import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { getParser } from "../parsers/index.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("nmap")) {
@@ -27,7 +28,7 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
           parse: getParser("nmap"),
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -50,7 +51,7 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
           parse: getParser("nmap"),
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -73,7 +74,7 @@ export async function register(server: McpServer): Promise<void> {
           timeout,
           parse: getParser("subfinder"),
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -97,7 +98,7 @@ export async function register(server: McpServer): Promise<void> {
           args,
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -120,7 +121,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["-d", target, "-b", source, "-f", `/tmp/nexus-mcp/harvester_out.json`],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }

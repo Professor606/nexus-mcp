@@ -2,7 +2,7 @@ import { execa } from "execa";
 import pLimit from "p-limit";
 import { cleanOutput } from "./utils/clean.js";
 import { cacheGet, cacheSet, buildKey } from "./cache.js";
-import { TargetSchema, UrlTargetSchema, sanitizeTarget } from "./types.js";
+import { TargetSchema, UrlTargetSchema, sanitizeTarget, ToolResultSchema, CVSS_MAP } from "./types.js";
 import type { ToolResult, Finding, ParserFn } from "./types.js";
 
 // ── Concurrency guard ─────────────────────────────────────────────────────────
@@ -46,6 +46,22 @@ export interface ExecOptions {
 }
 
 // ── Version Detection ─────────────────────────────────────────────────────────
+
+function normalizeFindings(findings: Finding[]): Finding[] {
+  findings.sort((a, b) => {
+    const scoreA = a.severity ? CVSS_MAP[a.severity] : 0;
+    const scoreB = b.severity ? CVSS_MAP[b.severity] : 0;
+    return scoreB - scoreA;
+  });
+  
+  for (const f of findings) {
+    if (f.detail && f.detail.length > 2048) {
+      f.detail = f.detail.slice(0, 2045) + "...";
+    }
+  }
+  
+  return findings.slice(0, 1000);
+}
 
 export function parseVersion(tool: string, raw: string): string | undefined {
   if (tool === "nmap" || tool === "nmap_scan") {
@@ -203,6 +219,7 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
             summary: `${opts.tool} completed on ${opts.target}`,
             findings: [],
           };
+      parsed.findings = normalizeFindings(parsed.findings || []);
     } catch (parseErr) {
       if (process.env.DEBUG === "true") {
         console.error(
@@ -229,10 +246,27 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
       ...(error && { error }),
     };
 
-    // Only cache successful results
-    if (!error) cacheSet(cacheKey, toolResult);
+    const validated = ToolResultSchema.safeParse(toolResult);
+    if (!validated.success) {
+      console.error(`[nexus-mcp] Output validation failed for ${opts.tool}: ${validated.error}`);
+      return {
+        tool: opts.tool,
+        target: opts.target,
+        summary: "Tool completed but output validation failed",
+        findings: [],
+        cached: false,
+        duration_ms: Date.now() - start,
+        raw_truncated: cleaned.slice(0, 6000),
+        error: `Validation error: ${validated.error.issues.map(i => i.message).join(", ")}`
+      };
+    }
 
-    return toolResult;
+    const finalResult = validated.data as ToolResult;
+
+    // Only cache successful results
+    if (!finalResult.error) cacheSet(cacheKey, finalResult);
+
+    return finalResult;
   });
 }
 

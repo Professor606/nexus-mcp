@@ -4,6 +4,7 @@ import { exec, readOutputFile } from "../executor.js";
 import { isInstalled } from "../utils/detect.js";
 import { appendToolRun } from "../memory.js";
 import { TargetSchema, SafeFlagsSchema, TimeoutSchema } from "../types.js";
+import { forceSafeJson } from "../utils/clean.js";
 
 export async function register(server: McpServer): Promise<void> {
   if (await isInstalled("prowler")) {
@@ -25,7 +26,7 @@ export async function register(server: McpServer): Promise<void> {
           args: [provider, "-M", "json", "-F", outDir, ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -74,7 +75,7 @@ export async function register(server: McpServer): Promise<void> {
                  result.summary = `Trivy found ${totalVulns} vulnerabilities`;
              } catch { /* ignore */ }
         }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -115,7 +116,7 @@ export async function register(server: McpServer): Promise<void> {
                  result.summary = `kube-hunter found ${result.findings.length} issues`;
              }
         } catch { /* ignore */ }
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
@@ -138,7 +139,7 @@ export async function register(server: McpServer): Promise<void> {
           args: ["--session", target, "--module-name", module, "--exec", ...flags],
           timeout,
         });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: "text", text: forceSafeJson(result, null, 2) }] };
       }
     );
   }
