@@ -5,9 +5,11 @@ import { mapSeverity } from "../types.js";
  * Nuclei outputs one JSON object per line when run with -j flag.
  * Format: { "template-id", "info": { "severity", "name" }, "type", "matched-at", ... }
  */
-export function parseNuclei(raw: string): {
+export function parseNuclei(raw: string, version?: string): {
   summary: string;
   findings: Finding[];
+  parse_error?: boolean;
+  raw_truncated?: string;
 } {
   const findings: Finding[] = [];
   const lines = raw.split("\n").filter((l) => l.trim().startsWith("{"));

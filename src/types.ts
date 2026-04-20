@@ -39,6 +39,13 @@ export interface Finding {
   metadata?: Record<string, unknown>;
 }
 
+export type ParserFn = (raw: string, version?: string) => { 
+  summary: string; 
+  findings: Finding[];
+  parse_error?: boolean;
+  raw_truncated?: string;
+};
+
 /** Structured result every tool returns — this is what the LLM sees. */
 export interface ToolResult {
   tool: string;
@@ -51,8 +58,10 @@ export interface ToolResult {
   duration_ms: number;
   /** Raw output hard-capped at 6000 chars */
   raw_truncated: string;
+  parse_error?: boolean;
   error?: string;
 }
+
 
 /** Per-target session state stored in memory.ts */
 export interface SessionNote {

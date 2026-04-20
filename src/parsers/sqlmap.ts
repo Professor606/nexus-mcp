@@ -8,11 +8,32 @@ import type { Finding } from "../types.js";
  *   - DBMS identification: "back-end DBMS: MySQL"
  *   - OS identification: "web server operating system: Linux"
  */
-export function parseSqlmap(raw: string): {
+export function parseSqlmap(raw: string, version?: string): {
   summary: string;
   findings: Finding[];
+  parse_error?: boolean;
+  raw_truncated?: string;
 } {
   const findings: Finding[] = [];
+  const trimmedRaw = raw.trim();
+
+  if (trimmedRaw.startsWith("<?xml") || trimmedRaw.includes("<sqlmap>")) {
+    // Basic XML extraction
+    const dbmsMatch = trimmedRaw.match(/<dbms[^>]*>(.*?)<\/dbms>/i);
+    let dbms = dbmsMatch ? dbmsMatch[1] : "";
+    
+    // Naively extract all parameters from <parameter> tags
+    const paramMatches = [...trimmedRaw.matchAll(/<parameter[^>]*>([^<]+)<\/parameter>/gi)];
+    for (const match of paramMatches) {
+      findings.push(buildSqliFound(match[1], ["xml-injected"], dbms));
+    }
+    
+    return {
+      summary: `sqlmap found ${findings.length} injectable parameter(s) (XML parsed)`,
+      findings
+    };
+  }
+
   const lines = raw.split("\n");
 
   let currentParam = "";

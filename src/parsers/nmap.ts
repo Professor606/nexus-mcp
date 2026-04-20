@@ -1,7 +1,7 @@
 import type { Finding } from "../types.js";
 import { mapSeverity } from "../types.js";
 
-export function parseNmap(raw: string): { summary: string; findings: Finding[] } {
+export function parseNmap(raw: string, version?: string): { summary: string; findings: Finding[]; parse_error?: boolean; raw_truncated?: string } {
   const findings: Finding[] = [];
   const lines = raw.split("\n");
 

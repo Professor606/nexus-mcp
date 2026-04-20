@@ -7,7 +7,7 @@ import type { Finding } from "../types.js";
  * ffuf JSON schema:
  * { "results": [{ "url", "status", "length", "words", "lines", "content-type", ... }] }
  */
-export function parseFfuf(raw: string): { summary: string; findings: Finding[] } {
+export function parseFfuf(raw: string, version?: string): { summary: string; findings: Finding[]; parse_error?: boolean; raw_truncated?: string } {
   const findings: Finding[] = [];
 
   if (!raw.trim()) {

@@ -3,7 +3,7 @@ import pLimit from "p-limit";
 import { cleanOutput } from "./utils/clean.js";
 import { cacheGet, cacheSet, buildKey } from "./cache.js";
 import { TargetSchema, UrlTargetSchema, sanitizeTarget } from "./types.js";
-import type { ToolResult, Finding } from "./types.js";
+import type { ToolResult, Finding, ParserFn } from "./types.js";
 
 // ── Concurrency guard ─────────────────────────────────────────────────────────
 
@@ -24,9 +24,25 @@ export interface ExecOptions {
   /** Extra env vars merged over process.env */
   env?: Record<string, string>;
   /** Optional structured parser — if omitted, findings[] is empty */
-  parse?: (raw: string) => { summary: string; findings: Finding[] };
+  parse?: ParserFn;
   /** Skip the cache even if a hit exists */
   noCache?: boolean;
+}
+
+// ── Version Detection ─────────────────────────────────────────────────────────
+
+export function parseVersion(tool: string, raw: string): string | undefined {
+  if (tool === "nmap" || tool === "nmap_scan") {
+    const match = raw.match(/Nmap version ([\d.]+)/i);
+    if (match) return match[1];
+  } else if (tool === "ffuf") {
+    const match = raw.match(/ffuf(?:\s+version)?\s+([\d.-]+(dev)?)/i) || raw.match(/"ffuf-version":\s*"([^"]+)"/);
+    if (match) return match[1];
+  } else if (tool === "sqlmap") {
+    const match = raw.match(/sqlmap(?:\/)?([\d.-]+)/i);
+    if (match) return match[1];
+  }
+  return undefined;
 }
 
 // ── Core runner ───────────────────────────────────────────────────────────────
@@ -110,23 +126,28 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
     }
 
     const cleaned = cleanOutput(rawOutput);
+    const version = parseVersion(opts.tool, cleaned);
 
-    let parsed: { summary: string; findings: Finding[] };
+    let parsed: { summary: string; findings: Finding[]; parse_error?: boolean; raw_truncated?: string };
     try {
       parsed = opts.parse
-        ? opts.parse(cleaned)
+        ? opts.parse(cleaned, version)
         : {
             summary: `${opts.tool} completed on ${opts.target}`,
             findings: [],
           };
     } catch (parseErr) {
+      if (process.env.DEBUG === "true") {
+        console.error(
+          `[nexus-mcp] ${opts.tool} parser failed: ${String(parseErr)}`
+        );
+      }
       parsed = {
-        summary: `${opts.tool} completed on ${opts.target} (parse error)`,
+        summary: `${opts.tool} completed but output could not be parsed (format may have changed)`,
         findings: [],
+        parse_error: true,
+        raw_truncated: cleaned.slice(0, 3000)
       };
-      console.error(
-        `[nexus-mcp] parse error [${opts.tool}]: ${String(parseErr)}`
-      );
     }
 
     const toolResult: ToolResult = {
@@ -136,7 +157,8 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
       findings: parsed.findings,
       cached: false,
       duration_ms: Date.now() - start,
-      raw_truncated: cleaned.slice(0, 6000),
+      raw_truncated: parsed.raw_truncated || cleaned.slice(0, 6000),
+      ...(parsed.parse_error && { parse_error: parsed.parse_error }),
       ...(error && { error }),
     };
 
