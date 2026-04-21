@@ -2,12 +2,13 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { parseArgs } from "node:util";
-import { config } from "dotenv";
+import { loadConfig } from "./config.js";
 import type { Profile } from "./types.js";
 import fs from "node:fs";
 
-// Load .env variables
-config();
+// Load .env variables from discovery paths
+loadConfig();
+
 
 // Parse CLI arguments
 const { values } = parseArgs({

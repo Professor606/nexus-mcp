@@ -1,20 +1,30 @@
 nexus-mcp
 ├── configs
-│   ├── claude_bugbounty.json
-│   ├── claude_cloud.json
-│   ├── claude_ctf.json
-│   ├── claude_full.json
-│   ├── claude_recon.json
-│   └── claude_web.json
+│   ├── antigravity.json
+│   ├── claude_desktop.json
+│   ├── cursor.json
+│   ├── README.md
+│   ├── roo_code.json
+│   └── vscode_copilot.json
 ├── .env
+├── .env.example
 ├── .gitignore
-├── ImplementationPlan.md
 ├── jest.config.js
 ├── package.json
 ├── package-lock.json
+├── planning
+│   ├── code-logic-fix.md
+│   ├── final.md
+│   ├── hexstrike.md
+│   ├── hexstrike-vs-nexus.md
+│   ├── nexus-tool-suggestion.md
+│   ├── Resources-prompts-plan.md
+│   └── top1-pentest-mcp.md
 ├── README.md
+├── scratch
 ├── src
 │   ├── cache.ts
+│   ├── config.ts
 │   ├── executor.ts
 │   ├── index.ts
 │   ├── memory.ts
@@ -47,7 +57,11 @@ nexus-mcp
 │       ├── detect.ts
 │       └── wordlists.ts
 ├── tests
+│   ├── dynamic.test.ts
 │   └── exploit.test.ts
+├── tools.md
 ├── tree.md
 ├── tsconfig.json
 └── tsconfig.test.json
+
+9 directories, 56 files

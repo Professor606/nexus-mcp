@@ -1,0 +1,13 @@
+{
+  "github.copilot.chat.mcpServers": [
+    {
+      "name": "nexus-mcp",
+      "command": "node",
+      "args": [
+        "/home/ahmad/mcp/nexus-mcp/dist/index.js",
+        "--profile",
+        "full"
+      ]
+    }
+  ]
+}

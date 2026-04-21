@@ -1,153 +1,140 @@
-# Nexus MCP
+# 🛡️ Nexus MCP
 
-Nexus MCP is a high-performance stdio Model Context Protocol (MCP) server specifically designed for penetration testing, bug bounty hunting, and security assessments. It exposes a vast array of security tools and capabilities directly to AI assistants like Claude Desktop, enabling seamless, AI-assisted security workflows.
+**Nexus MCP** is a high-performance, token-efficient Model Context Protocol (MCP) server engineered for the modern security professional. Optimized for speed and precision, it transforms AI assistants like Claude Desktop into powerful partners for penetration testing, bug bounty hunting, and comprehensive security assessments.
 
-> **⚠️ Security Notice: Exploit tools are disabled by default.**
->
-> Tools such as `pwntools_run`, `angr_analyze`, and `libc_database_lookup` execute
-> user-controlled Python code and carry significant RCE risk. They require explicit
-> opt-in via the `--enable-exploit` CLI flag or the `NEXUS_ENABLE_EXPLOIT=true`
-> environment variable. When enabled, all user-provided Python scripts are scanned
-> for dangerous imports (e.g. `os`, `subprocess`, `socket`), function calls
-> (e.g. `eval`, `exec`, `os.system`), network operations, and file-system access
-> outside `/tmp/nexus-mcp` before execution.
+Nexus MCP bridges the gap between raw security tools and AI-driven logic, providing a seamless interface to a vast arsenal of industry-standard utilities.
 
-## 🚀 Features
+---
 
-Nexus MCP categorizes its capabilities into different toolsets and allows loading specific **Profiles** to tailor the AI's context window and available tools based on the task at hand.
+> [!CAUTION]
+> ### 🚨 Security Notice: Exploit Tools Disabled by Default
+> Tools such as `pwntools_run`, `angr_analyze`, and `libc_database_lookup` carry significant RCE risk as they execute user-controlled code.
+> 
+> **Explicit Opt-in Required:**
+> - CLI Flag: `--enable-exploit`
+> - Environment: `NEXUS_ENABLE_EXPLOIT=true`
+> 
+> When enabled, scripts are scanned via AST-based validation for dangerous operations (e.g., `os.system`, `subprocess`, unauthorized network/FS access) before execution.
 
-### Supported Profiles
-When starting the server, you can load specific profiles to narrow down or expand the available tools. **Profile switching strictly limits the available tools exposed to the LLM**, effectively reducing context window usage and focusing the AI on the task at hand. You can use the `switch_phase` tool to dynamically change profiles during a session, which will refresh the tool list in the client.
-- `recon`: Reconnaissance and discovery tools.
-- `web`: Web application assessment tools.
-- `ctf`: Tools tailored for Capture The Flag competitions.
-- `bugbounty`: A curated set of tools for bug bounty hunting.
-- `cloud`: Cloud security assessment tools.
-- `osint`: Open Source Intelligence gathering.
-- `network`: Network-level assessment tools.
-- `full`: Loads all available capabilities (useful when context limits are not an issue).
+---
 
-### Tool Categories
-- **Reconnaissance** (`recon`): Asset discovery, port scanning, and topology mapping.
-- **Web Application & Web Attack** (`web`, `webattack`): Directory fuzzing, vulnerability scanning, SQLi, XSS, and more.
-- **Network** (`network`): Packet analysis, network sniffing, and protocol testing.
-- **Exploitation** (`exploit`): Exploit search, payload generation, and execution assistance.
-- **Cloud** (`cloud`): Cloud enumeration, IAM checking, and misconfiguration scanning.
-- **OSINT** (`osint`): Threat intelligence, public records, and metadata extraction.
-- **Binary Analysis** (`binary`): Disassembly, static analysis, and reverse engineering.
-- **Forensics** (`forensics`): Artifact analysis, memory parsing, and disk investigation.
-- **Authentication** (`auth`): Brute-forcing, hash cracking, and credential testing.
-- **Meta** (`meta`): General utility functions and meta commands.
+## 🚀 Key Features
 
-## 🛠️ Setup Instructions
+- **Profile-Based Toolsets**: Dynamically switch between specialized toolsets to keep the AI's context window lean and focused.
+- **Smart Chaining**: Execute complex multi-tool workflows where findings from one tool automatically inform the next.
+- **AI-Driven Suggestions**: Get context-aware recommendations for next steps based on current findings.
+- **Structured Note-taking**: Built-in persistence for findings, ensuring no evidence is lost during a session.
+- **High Concurrency**: Optimized subprocess management for fast, parallel execution of network scans and fuzzing.
+
+---
+
+## 📂 Tool Profiles
+
+Profiles allow you to tailor the available tools to your specific task, reducing noise and optimizing token usage. You can switch profiles mid-session using the `switch_phase` tool.
+
+| Profile | Focus Area | Key Tools |
+| :--- | :--- | :--- |
+| `recon` | Discovery & Mapping | `nmap`, `subfinder`, `amass`, `rustscan` |
+| `web` | Web App Security | `ffuf`, `nuclei`, `katana`, `sqlmap`, `dalfox` |
+| `network` | Infrastructure | `netexec`, `enum4linux-ng`, `responder`, `hydra` |
+| `osint` | Intelligence | `theHarvester`, `sherlock`, `spiderfoot`, `shodan` |
+| `binary` | Reverse Engineering | `gdb`, `radare2`, `ghidra`, `checksec`, `ropper` |
+| `cloud` | Cloud Security | `prowler`, `trivy`, `pacu`, `kube-hunter` |
+| `ctf` | Capture The Flag | `pwntools`, `angr`, `zsteg`, `stegsolve`, `hashcat` |
+| `full` | Complete Arsenal | All tools enabled (use with high context limits) |
+
+---
+
+## 🛠️ Setup & Installation
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- `npm` (Node Package Manager)
+- **Node.js**: v18.0.0 or higher
+- **Python 3.10+**: (Required for exploit and OSINT tools)
+- **Go**: (Required for many ProjectDiscovery tools like `nuclei`, `subfinder`)
 
-### Installation
-1. Clone the repository and navigate to the project directory:
+### Quick Start
+1. **Clone & Install**
    ```bash
    git clone https://github.com/professor404/nexus-mcp.git
    cd nexus-mcp
+   npm install
    ```
 
-2. Install the dependencies:
-  ```bash
-  npm install
-  ```
+2. **Configure Environment**
+   Nexus MCP automatically looks for `.env` files in these locations:
+   1. `$NEXUS_CONFIG_DIR/.env`
+   2. `~/.config/nexus-mcp/.env` (Recommended for global keys)
+   3. `./.env` (Project local)
 
-3. Setup environment variables:
-```bash
-cp .env.example .env
-```
+   ```bash
+   mkdir -p ~/.config/nexus-mcp
+   cp .env.example ~/.config/nexus-mcp/.env
+   # Edit with your API keys (Shodan, Hunter.io, etc.)
+   ```
 
-3. Edit .env to configure any API keys or specific configuration needed for the tools. Key environment variables include:
+3. **Build & Run**
+   ```bash
+   npm run build
+   npm run start:full
+   ```
 
-```
-API Keys: SHODAN_API_KEY, SPIDERFOOT_API_KEY, WPSCAN_API_TOKEN
-Cache: CACHE_TTL_SECONDS (Cache identical tool results, default: 3600)
-Concurrency: MAX_CONCURRENCY (Max parallel subprocesses, default: 4)
-Debug: DEBUG (Set to true to enable verbose stderr logging)
-Output: NEXUS_OUTPUT_DIR (Custom directory for tool outputs)
-Exploit Tools: NEXUS_ENABLE_EXPLOIT (Set to true to enable pwntools_run, angr_analyze, and libc_database_lookup)
-```
+---
 
-Build the project:
-```bash
-npm run build
-```
+## 💻 Integration
 
-💻 Usage
-Running Locally (Development)
-You can start specific profiles directly using npm scripts defined in package.json:
-```bash
-npm run start:recon
-npm run start:web
-npm run start:full
-```
+### Claude Desktop
+Add Nexus to your `claude_desktop_config.json`:
 
-To enable exploit tools (e.g. for CTF or binary-analysis workflows), add the --enable-exploit flag:
-```bash
-node dist/index.js --profile ctf --enable-exploit
-```
-
-Environment Variables
-```
-NEXUS_OUTPUT_DIR: The directory where the server will drop output files (defaults to /tmp/nexus-mcp).
-CACHE_TTL_SECONDS: Caching time-to-live for tool results (defaults to 3600).
-DEBUG: Set to true to enable verbose logging.
-NEXUS_ENABLE_EXPLOIT: Set to true to enable exploit tools (pwntools_run, angr_analyze, libc_database_lookup). Use with caution — these tools execute
-```
-Python code and are gated behind AST-based validation.
-Integrating with Claude Desktop
-To use Nexus MCP with Claude Desktop, you need to add it to your claude_desktop_config.json file.
-Open your Claude Desktop configuration file (usually located at ~/.config/Claude/claude_desktop_config.json on Linux/macOS or %APPDATA%\Claude\claude_desktop_config.json on Windows).
-Add the nexus server configuration, pointing it to your built dist/index.js file:
-```JSON
-
+```json
 {
   "mcpServers": {
     "nexus": {
       "command": "node",
-      "args": [
-        "/absolute/path/to/nexus-mcp/dist/index.js",
-        "--profile",
-        "full"
-      ],
-      "env": {
-        "NEXUS_OUTPUT_DIR": "/tmp/nexus-mcp",
-        "CACHE_TTL_SECONDS": "3600"
-      }
+      "args": ["/path/to/nexus-mcp/dist/index.js", "--profile", "full"]
+    }
+  }
+}
+```
+*Note: Environment variables in the `env` block are optional if you use a `.env` file.*
+
+### Antigravity
+Add to your `mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "nexus": {
+      "command": "node",
+      "args": ["/path/to/nexus-mcp/dist/index.js", "--profile", "full"]
     }
   }
 }
 ```
 
-(Make sure to replace /absolute/path/to/nexus-mcp/ with the actual absolute path to the directory where this project resides.)
-To enable exploit tools in Claude Desktop, add "--enable-exploit" to the args array or set NEXUS_ENABLE_EXPLOIT: "true" in the env block.
-Once configured, restart Claude Desktop. The tools will now be available in your chats when discussing security and penetration testing.
-Integrating with Antigravity
-Antigravity natively supports MCP servers using a standard JSON configuration.
-Open your Antigravity MCP configuration file located at ~/.gemini/antigravity/mcp_config.json.
-Add the server configuration to the file:
-```JSON
+---
 
-{
-  "mcpServers": {
-    "nexus": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/nexus-mcp/dist/index.js",
-        "--profile",
-        "full"
-      ],
-      "env": {
-        "NEXUS_OUTPUT_DIR": "/tmp/nexus-mcp",
-        "CACHE_TTL_SECONDS": "3600"
-      }
-    }
-  }
-}
-```
-Once the file is saved, Antigravity will automatically detect the new configuration and initialize the Nexus tools for your session.
+## ⚙️ Configuration Priority
+
+Nexus MCP resolves configuration settings using the following hierarchy (highest to lowest):
+
+1. **CLI Flags**: `--profile`, `--debug`, `--enable-exploit`, `--output-dir`.
+2. **JSON Env**: Variables defined in your MCP client's `env` block.
+3. **.env File**: Discovered automatically in `$NEXUS_CONFIG_DIR`, `~/.config/nexus-mcp/.env`, or `./.env`.
+4. **Built-in Defaults**.
+
+---
+
+## 🧠 Nexus Internal Tools
+
+Beyond standard wrappers, Nexus provides custom tools to orchestrate your assessment:
+
+- **`switch_phase`**: Dynamically refresh the tool list available to the AI.
+- **`chain_tools`**: Define and run automated sequences (e.g., `nmap` -> `httpx` -> `nuclei`).
+- **`attack_chain_suggest`**: Analyzes current `pentest_notes` to suggest the most logical next step.
+- **`pentest_notes`**: Centralized, structured storage for all discovered vulnerabilities and assets.
+- **`generate_report`**: Export all findings into a professional Markdown report.
+
+---
+
+## 📜 License
+This project is licensed under the **MIT License**. Use responsibly and only on systems you have explicit permission to test.
