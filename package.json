@@ -3,12 +3,29 @@
   "version": "1.0.0",
   "description": "High-performance stdio MCP server for penetration testing",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "nexus-mcp": "./dist/index.js"
   },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["mcp", "pentest", "security", "bugbounty", "recon" ,"redteam", "web-security", "osint", "network", "ctf", "cybersecurity"],
+  "author": "Ahmad",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/professor404/nexus-mcp.git"
+  },
   "scripts": {
+    "dev": "tsx src/index.ts --profile full --debug",
+    "test": "node --experimental-vm-modules node_modules/jest-cli/bin/jest.js",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js --profile full",
+    "inspect:dev": "DANGEROUSLY_OMIT_AUTH=true && npx @modelcontextprotocol/inspector node dist/index.js --profile full",
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
+    "build:watch": "tsc --watch",
     "start": "node dist/index.js",
     "start:recon": "node dist/index.js --profile recon",
     "start:web": "node dist/index.js --profile web",
@@ -17,8 +34,7 @@
     "start:bugbounty": "node dist/index.js --profile bugbounty",
     "start:cloud": "node dist/index.js --profile cloud",
     "start:osint": "node dist/index.js --profile osint",
-    "start:network": "node dist/index.js --profile network",
-    "test": "node --experimental-vm-modules node_modules/jest-cli/bin/jest.js"
+    "start:network": "node dist/index.js --profile network"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -29,6 +45,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@modelcontextprotocol/inspector": "^0.21.2",
     "@types/jest": "^29.5.0",
     "@types/node": "^22.0.0",
     "jest": "^29.7.0",
