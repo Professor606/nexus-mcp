@@ -172,6 +172,7 @@ export async function exec(opts: ExecOptions): Promise<ToolResult> {
         reject: false,           // non-zero exit codes don't throw
         env: { ...process.env, ...opts.env } as Record<string, string>,
         all: true,               // merge stdout + stderr into result.all
+        stdin: "ignore",         // prevent ProjectDiscovery tools from hanging
       });
       rawOutput = result.all ?? result.stdout ?? "";
 

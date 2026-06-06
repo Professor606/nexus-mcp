@@ -1,13 +1,70 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import type { SessionNote, Finding } from "./types.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 const MAX_NOTES = Number(process.env.NEXUS_MAX_NOTES) || 100;
 const MAX_NOTE_AGE_MS = Number(process.env.NEXUS_MAX_NOTE_AGE_HOURS || 24) * 60 * 60 * 1000;
 
+const LOG_DIR = path.resolve(__dirname, '..', '.logs');
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 const notes = new Map<string, SessionNote>();
+
+function getFilePath(target: string): string {
+  // Remove protocol (http:// or https://)
+  let safeName = target.replace(/^https?:\/\//, '');
+  // Sanitize the rest of the URL/target to be a safe filename
+  safeName = safeName.replace(/[^a-zA-Z0-9-]/g, '_');
+  return path.join(LOG_DIR, `${safeName}.json`);
+}
+
+// Initialize persistence
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+} else {
+  // Load existing individual files
+  const files = fs.readdirSync(LOG_DIR);
+  for (const file of files) {
+    if (!file.endsWith('.json') || file === 'pentest_notes.json') continue;
+    try {
+      const data = fs.readFileSync(path.join(LOG_DIR, file), 'utf-8');
+      const parsed = JSON.parse(data);
+      if (parsed.target) {
+        notes.set(parsed.target, parsed as SessionNote);
+      }
+    } catch (e) {
+      console.error(`[nexus-mcp] Failed to load pentest note from ${file}:`, e);
+    }
+  }
+}
+
+function persistTarget(target: string): void {
+  try {
+    const note = notes.get(target);
+    if (!note) return;
+    fs.writeFileSync(getFilePath(target), JSON.stringify(note, null, 2), 'utf-8');
+  } catch (e) {
+    console.error(`[nexus-mcp] Failed to save pentest note for ${target}:`, e);
+  }
+}
+
+function deleteTargetFile(target: string): void {
+  try {
+    const filePath = getFilePath(target);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {
+    console.error(`[nexus-mcp] Failed to delete pentest note file for ${target}:`, e);
+  }
+}
 
 // Thread-safety note: Node.js is single-threaded, so synchronous Map operations are safe.
 function cleanupOldNotes(): void {
@@ -16,6 +73,7 @@ function cleanupOldNotes(): void {
   for (const [target, note] of notes) {
     if (now - new Date(note.updated_at).getTime() > MAX_NOTE_AGE_MS) {
       notes.delete(target);
+      deleteTargetFile(target);
       deleted++;
     }
   }
@@ -33,7 +91,10 @@ function enforceMaxSize(): void {
         oldest = entry;
       }
     }
-    if (oldest) notes.delete(oldest[0]);
+    if (oldest) {
+      notes.delete(oldest[0]);
+      deleteTargetFile(oldest[0]);
+    }
   }
 }
 
@@ -71,7 +132,7 @@ export function saveNote(
   target: string,
   data: Partial<SessionNote>
 ): SessionNote {
-  if (notes.size > MAX_NOTES * 0.9) {
+  if (notes.size >= MAX_NOTES && !notes.has(target)) {
     cleanupOldNotes();
     enforceMaxSize();
   }
@@ -79,6 +140,7 @@ export function saveNote(
   const existing = notes.get(target) ?? blank(target);
   const updated = touch({ ...existing, ...data, target });
   notes.set(target, updated);
+  persistTarget(target);
   return updated;
 }
 
@@ -93,6 +155,7 @@ export function appendFinding(target: string, finding: Finding): SessionNote {
   note.findings.push(finding);
   touch(note);
   notes.set(target, note);
+  persistTarget(target);
   return note;
 }
 
@@ -103,6 +166,7 @@ export function appendToolRun(target: string, toolName: string): void {
     note.tools_run.push(toolName);
     touch(note);
     notes.set(target, note);
+    persistTarget(target);
   }
 }
 
@@ -115,6 +179,7 @@ export function appendFindings(
   note.findings.push(...findings);
   touch(note);
   notes.set(target, note);
+  persistTarget(target);
   return note;
 }
 
@@ -124,11 +189,13 @@ export function setPhase(target: string, phase: string): void {
   note.phase = phase;
   touch(note);
   notes.set(target, note);
+  persistTarget(target);
 }
 
 /** Delete note for target. */
 export function clearNote(target: string): void {
   notes.delete(target);
+  deleteTargetFile(target);
 }
 
 /** List all targets with active notes. */

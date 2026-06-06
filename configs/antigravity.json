@@ -3,7 +3,7 @@
     "nexus-mcp": {
       "command": "node",
       "args": [
-        "/home/ahmad/mcp/nexus-mcp/dist/index.js",
+        "/path-to/nexus-mcp/dist/index.js",
         "--profile",
         "full"
       ]
