@@ -55,7 +55,7 @@ Profiles allow you to tailor the available tools to your specific task, reducing
 ### Quick Start
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/professor404/nexus-mcp.git
+   git clone https://github.com/professor606/nexus-mcp.git
    cd nexus-mcp
    npm install
    ```
